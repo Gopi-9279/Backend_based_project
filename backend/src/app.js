@@ -17,9 +17,13 @@ app.use(cookieParser())
 
 
 /**
- * @description Prefix routes
+ * @description acquire routes
  */
+import authRouter from "./routes/user.routes.js";
 
-
+/**
+ * @description using prefix
+ */
+app.use("/api/v1/users",authRouter);
 
 export default app;
