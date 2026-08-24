@@ -4,9 +4,10 @@ import { ApiError } from "../utils/ApiError.utils.js";
 import { uploadOnCloudinary } from "../services/uploadonCloudinary.service.js";
 import { ApiResponse } from "../utils/ApiResponse.utils.js";
 const UserRegistration = asyncHandler(async (req, res) => {
+
   // get user details from frontend
   const { username, email, password, fullname } = req.body;
-  console.log(username,email,password,fullname)
+
   //validation
   if (
   [username, email, password, fullname].some(
@@ -25,11 +26,16 @@ const UserRegistration = asyncHandler(async (req, res) => {
   }
   //check for images,check for avatar
   const avatarlocalPath = req.files?.avatar[0]?.path
-  const coverImagelocalPath = req.files?.CoverImage[0]?.path
-
+  // const coverImagelocalPath = req.files?.coverImage[0]?.path;
+  let coverImagelocalPath ;
+  if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0 ){
+    coverImagelocalPath = req.files.coverImage[0].path;
+  }
   if(!avatarlocalPath) throw new ApiError(400,"avatar file is required")
   const avatar = await uploadOnCloudinary(avatarlocalPath)
   const coverImage = await uploadOnCloudinary(coverImagelocalPath)
+  
+  
   if(!avatar){
     throw new ApiError(400,"avatar file is not uploaded")
   }

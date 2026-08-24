@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "node index.js",
-    "dev": "nodemon index.js",
+    "dev": "nodemon --env-file=.env index.js",
     "start": "node index.js"
   },
   "author": "Gopi Kishan",
