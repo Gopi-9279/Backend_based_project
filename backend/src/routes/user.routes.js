@@ -1,4 +1,4 @@
-import { UserLoginController, UserLogoutController, UserRegistration , refreshAccessToken} from "../controllers/user.controller.js";
+import { UpdatecureentPassword, UserLoginController, UserLogoutController, UserRegistration , getCurrentUser, refreshAccessToken} from "../controllers/user.controller.js";
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -27,7 +27,19 @@ authRouter.post("/login",UserLoginController)
  * @description for logging out
  */
 authRouter.post("/logout",authMiddleware,UserLogoutController)
-
-
+/**
+ * @route POST /api/v1/users/refresh-token
+ * @description for refresh Token 
+ */
 authRouter.post("/refresh-token",refreshAccessToken)
+/**
+ * @route POST /api/v1/users/update-password
+ * @description for updating the current user password
+ */ 
+authRouter.post("/update-password",authMiddleware,UpdatecureentPassword)
+/**
+ * @route GET /api/v1/users/get-user
+ * @description for getting user profile
+ */
+authRouter.get("get-profile",authMiddleware,getCurrentUser)
 export default authRouter

@@ -178,7 +178,7 @@ const UserLogoutController = asyncHandler(async (req, res) => {
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
-  if (incomingRefreshToken) {
+  if (!incomingRefreshToken) {
     throw new ApiError(401, "unauthorized request");
   }
   try {
@@ -186,16 +186,16 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
     );
-  
+
     const user = await UserModel.findById(decodedToken?._id);
     if (!user) {
       throw new ApiError(409, "Unauthorized access , no user found");
     }
-  
+
     if (incomingRefreshToken !== user?.refreshToken) {
       throw new ApiError(401, "Refresh token expired or used");
     }
-  
+
     const options = {
       httpOnly: true,
       secure: process.env.NODE_ENV,
@@ -203,7 +203,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const { accessToken, newrefreshToken } = await generateAcessAndRefreshToken(
       user._id
     );
-  
+
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
@@ -216,7 +216,113 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
       );
   } catch (error) {
-    throw new ApiError(401,error?.message || "Invalid refresh Token")
+    throw new ApiError(401, error?.message || "Invalid refresh Token");
   }
 });
-export { UserRegistration, UserLoginController, UserLogoutController, refreshAccessToken};
+/**
+ * @route POST /api/v1/users/update-password
+ * @description for changing the password
+ */
+const UpdatecureentPassword = asyncHandler(async (req, res) => {
+  // req body se information lena
+  const { oldpassword, newpassword } = req.body;
+  // agar info nahi aya to check karna
+  if (
+    [oldpassword, newpassword].some((field) => !field || field.trim() === "")
+  ) {
+    throw new ApiError(400, "All fields are required");
+  }
+  // check if password is correct or not
+  const founduser = await UserModel.findById(req.user?._id);
+  // check if password is correct
+  const isPasswordCorrect = await founduser.IspasswordCorrect(oldpassword);
+  if (!isPasswordCorrect) {
+    throw new ApiError(401, "password incorrect");
+  }
+  // Update the password
+  founduser.password = newpassword;
+  await founduser.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Successfully updated the password"));
+});
+/**
+ * @route /api/v1/users/get-profile
+ * @description for getting user profile
+ */
+const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await UserModel.findById(req.user?._id);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { user }, "current user fetched successfully"));
+});
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullname, email } = req.body;
+  if (!fullname || !email) {
+    throw new ApiError(400, "All fields are required");
+  }
+  const user = await UserModel.findByIdAndUpdate(
+    req,
+    user?._id,
+    { $set: { fullname, email } },
+    { new: true }
+  ).select("-password");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details updated successfully"));
+});
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarlocalPath = req.file?.path;
+
+  if (!avatarlocalPath) {
+    throw new ApiError(400, "All fields are Required");
+  }
+  const avatar = await uploadOnCloudinary(avatarlocalPath);
+  if (!avatar.url) {
+    throw new ApiError(400, "Not uploaded on cloudinary due to some issue");
+  }
+  const user = await UserModel.findByIdAndUpdate(
+    req.user?._id,
+    { $set: { avatar: avatar.url } },
+    { new: true }
+  ).select("-password");
+  
+  return res 
+  .status(200)
+  .json(new ApiResponse(200,user,"Avatar  updated"))
+});
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverImagelocalPath = req.file?.path;
+
+  if (!coverImagelocalPath) {
+    throw new ApiError(400, "All fields are Required");
+  }
+  const coverImage = await uploadOnCloudinary(coverImagelocalPath);
+  if (!coverImage.url) {
+    throw new ApiError(400, "Not uploaded on cloudinary due to some issue");
+  }
+  const user = await UserModel.findByIdAndUpdate(
+    req.user?._id,
+    { $set: { coverImage : coverImage.url } },
+    { new: true }
+  ).select("-password");
+  
+  return res 
+  .status(200)
+  .json(new ApiResponse(200,user,"cover image updated"))
+});
+
+export {
+  UserRegistration,
+  UserLoginController,
+  UserLogoutController,
+  refreshAccessToken,
+  getCurrentUser,
+  UpdatecureentPassword,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage
+};

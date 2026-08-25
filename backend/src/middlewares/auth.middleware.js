@@ -8,11 +8,9 @@ import jwt from "jsonwebtoken"
 
 export const authMiddleware = asyncHandler(async(req,_,next)=>{
     try {
-        console.log("Cookies:", req.cookies);
-        console.log("Access token cookie:", req.cookies?.accessToken);
-        console.log("Authorization header:", req.header("Authorization"));
+  
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ","")
-        console.log(token);
+  
         if(!token){
             throw new ApiError(401,"Unauthorized request")
         }
