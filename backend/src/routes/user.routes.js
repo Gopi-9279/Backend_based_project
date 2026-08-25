@@ -1,6 +1,7 @@
-import { UserRegistration } from "../controllers/user.controller.js";
+import { UserLoginController, UserLogoutController, UserRegistration } from "../controllers/user.controller.js";
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
 const authRouter = Router();
 /**
  * @route POST /api/v1/users/register
@@ -16,6 +17,14 @@ authRouter.post("/register",upload.fields([
     }
 ]) ,UserRegistration)
 
-
-
+/**
+ * @route POST /api/v1/users/login
+ * @description for Authenticating user
+ */
+authRouter.post("/login",UserLoginController)
+/**
+ * @route POST /api/v1/users/logout
+ * @description for logging out
+ */
+authRouter.post("/logout",authMiddleware,UserLogoutController)
 export default authRouter
