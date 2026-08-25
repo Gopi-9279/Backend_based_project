@@ -3,24 +3,24 @@ import { UserModel } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.utils.js";
 import { uploadOnCloudinary } from "../services/uploadonCloudinary.service.js";
 import { ApiResponse } from "../utils/ApiResponse.utils.js";
+import jwt from "jsonwebtoken";
 
+const generateAcessAndRefreshToken = async (userId) => {
+  try {
+    const user = await UserModel.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
 
-
-const generateAcessAndRefreshToken = async(userId)=>
-  {
-    try {
-      const user = await UserModel.findById(userId)
-      const accessToken = user.generateAccessToken()
-      const refreshToken = user.generateRefreshToken()
-      
-      user.refreshToken = refreshToken
-      await user.save({validateBeforeSave : false})
-      return {accessToken,refreshToken}
-    } catch (error) {
-      throw new ApiError(500,"Something went wrong while geneating acess and refresh token")
-    }
-}
-
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while geneating acess and refresh token"
+    );
+  }
+};
 
 /**
  * @route POST /api/v1/users/register
@@ -96,77 +96,127 @@ const UserLoginController = asyncHandler(async (req, res) => {
    *step 2. validate null ko
    *step 3. email se user ko find karenge agar nahi mila to return false kar denge
    *step 4. password check karenge
-   *step 5. if password match ho gaya to user ko token de denge 
+   *step 5. if password match ho gaya to user ko token de denge
    *step 6. fir login kara denge
-   * 
-   * 
+   *
+   *
    */
-   const {  email, password } = req.body;
+  const { email, password } = req.body;
   //validation
-  if (
-    [ email, password].some((field) => !field || field.trim() === "")
-  ) {
+  if ([email, password].some((field) => !field || field.trim() === "")) {
     throw new ApiError(400, "All fields are required");
   }
   // step 3
-  const user = await UserModel.findOne({email})
-  if(!user){
-    throw new ApiError(404,"User does not exits here with this email")
-  } 
-  // step 4
-  const IspasswordCorrect = await user.IspasswordCorrect(password)
-  if(!IspasswordCorrect){
-    throw new ApiError(401,"password is incorrect")
+  const user = await UserModel.findOne({ email });
+  if (!user) {
+    throw new ApiError(404, "User does not exits here with this email");
   }
-  const {accessToken,refreshToken} = await generateAcessAndRefreshToken(user._id)
+  // step 4
+  const IspasswordCorrect = await user.IspasswordCorrect(password);
+  if (!IspasswordCorrect) {
+    throw new ApiError(401, "password is incorrect");
+  }
+  const { accessToken, refreshToken } = await generateAcessAndRefreshToken(
+    user._id
+  );
 
-  const loggedInUser = await UserModel.findById(user._id).select("-passwors -refreshToken")
-
+  const loggedInUser = await UserModel.findById(user._id).select(
+    "-passwors -refreshToken"
+  );
 
   const options = {
-    httpOnly : true,
-    secure :  process.env.NODE_ENV === "production"
-  }
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+  };
   return res
-  .status(200)
-  .cookie("accessToken", accessToken , options)
-  .cookie("refreshToken",refreshToken, options)
-  .json(
-    new ApiResponse(
-      200,{
-        user : loggedInUser,accessToken,refreshToken
-      },
-      "user logged in successfully"
-    )
-  )
-
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "user logged in successfully"
+      )
+    );
 });
 /**
  * @route POST /api/v1/users/logout
- * @description for Logging out 
+ * @description for Logging out
  */
-const UserLogoutController = asyncHandler(async(req,res)=>{
+const UserLogoutController = asyncHandler(async (req, res) => {
   await UserModel.findByIdAndUpdate(
     req.user._id,
     {
-      $set : {
-        refreshToken : undefined
-      }
-    },{
-      new : true
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
     }
-  )
+  );
   const options = {
-    httpOnly : true,
-    secure :  process.env.NODE_ENV === "production"
-  }
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+  };
 
   return res
-  .status(200)
-  .clearCookie("accessToken",options)
-  .clearCookie("refreshToken",options)
-  .json(new ApiResponse(200,{},"user logged out successfully"))
-
-
-})
-export { UserRegistration, UserLoginController,UserLogoutController };
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "user logged out successfully"));
+});
+/**
+ * @route POST /api/v1/users/refresh-token
+ * @description for Accessing refresh token
+ */
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
+  if (incomingRefreshToken) {
+    throw new ApiError(401, "unauthorized request");
+  }
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+  
+    const user = await UserModel.findById(decodedToken?._id);
+    if (!user) {
+      throw new ApiError(409, "Unauthorized access , no user found");
+    }
+  
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(401, "Refresh token expired or used");
+    }
+  
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV,
+    };
+    const { accessToken, newrefreshToken } = await generateAcessAndRefreshToken(
+      user._id
+    );
+  
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newrefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, newrefreshToken },
+          "Access Token refreshed"
+        )
+      );
+  } catch (error) {
+    throw new ApiError(401,error?.message || "Invalid refresh Token")
+  }
+});
+export { UserRegistration, UserLoginController, UserLogoutController, refreshAccessToken};

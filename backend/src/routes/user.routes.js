@@ -1,4 +1,4 @@
-import { UserLoginController, UserLogoutController, UserRegistration } from "../controllers/user.controller.js";
+import { UserLoginController, UserLogoutController, UserRegistration , refreshAccessToken} from "../controllers/user.controller.js";
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -27,4 +27,7 @@ authRouter.post("/login",UserLoginController)
  * @description for logging out
  */
 authRouter.post("/logout",authMiddleware,UserLogoutController)
+
+
+authRouter.post("/refresh-token",refreshAccessToken)
 export default authRouter
