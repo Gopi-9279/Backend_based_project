@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.utils.js";
 import { asyncHandler } from "../utils/asyncHandler.utils.js";
 import jwt from "jsonwebtoken"
 /**
- * @description for logging out user we check token here is it valid or not 
+ * @description for checking wheather the user is logged in or not and checking for id in token
  */
 
 export const authMiddleware = asyncHandler(async(req,_,next)=>{
