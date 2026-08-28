@@ -68,8 +68,8 @@ const UserRegistration = asyncHandler(async (req, res) => {
   // create user object - create entry in db
   const user = await UserModel.create({
     fullname,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
+    avatar: avatar.secure_url,
+    coverImage: coverImage?.secure_url || "",
     email,
     password,
     username: username.toLowerCase(),
@@ -153,9 +153,9 @@ const UserLogoutController = asyncHandler(async (req, res) => {
   await UserModel.findByIdAndUpdate(
     req.user?._id,
     {
-      $set: {
-        refreshToken: undefined,
-      },
+      $unset: {
+        refreshToken: 1,
+      }
     },
     {
       new: true,

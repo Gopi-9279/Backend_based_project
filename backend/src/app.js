@@ -20,10 +20,11 @@ app.use(cookieParser())
  * @description acquire routes
  */
 import authRouter from "./routes/user.routes.js";
-
+import {router as VieoRouter} from "./routes/video.routes.js";
 /**
  * @description using prefix
  */
 app.use("/api/v1/users",authRouter);
+app.use("/api/v1/videos",VieoRouter);
 
 export default app;
