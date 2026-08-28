@@ -3,10 +3,10 @@ import multer from "multer"
  * @description this is multer middleware for local file handling and url 
  */
 const storage = multer.diskStorage({
-    destination : function(req,file,cb){
+    destination : function(_,file,cb){
         cb(null,"./public/temp")
     },
-    filename : function (req,file,cb){
+    filename : function (_,file,cb){
         cb(null,file.originalname)
     }
 })
