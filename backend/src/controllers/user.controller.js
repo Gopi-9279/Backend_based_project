@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.utils.js";
 import { UserModel } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.utils.js";
-import { uploadOnCloudinary } from "../services/uploadonCloudinary.service.js";
+import { uploadOnCloudinary,destroyfromCloudinary } from "../services/uploadonCloudinary.service.js";
 import { ApiResponse } from "../utils/ApiResponse.utils.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -56,7 +56,7 @@ const UserRegistration = asyncHandler(async (req, res) => {
     Array.isArray(req.files.coverImage) &&
     req.files.coverImage.length > 0
   ) {
-    coverImagelocalPath = req.files.coverImage[0].path;
+    coverImagelocalPath = req.files.coverImage[0]?.path;
   }
   if (!avatarlocalPath) throw new ApiError(400, "avatar file is required");
   const avatar = await uploadOnCloudinary(avatarlocalPath);
@@ -68,8 +68,8 @@ const UserRegistration = asyncHandler(async (req, res) => {
   // create user object - create entry in db
   const user = await UserModel.create({
     fullname,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
+    avatar: avatar.secure_url,
+    coverImage: coverImage?.secure_url || "",
     email,
     password,
     username: username.toLowerCase(),
@@ -151,11 +151,11 @@ const UserLoginController = asyncHandler(async (req, res) => {
  */
 const UserLogoutController = asyncHandler(async (req, res) => {
   await UserModel.findByIdAndUpdate(
-    req.user._id,
+    req.user?._id,
     {
-      $set: {
-        refreshToken: undefined,
-      },
+      $unset: {
+        refreshToken: 1,
+      }
     },
     {
       new: true,
@@ -283,16 +283,15 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are Required");
   }
   try {
-    // delete old image from cloudinary - later on
+    // delete old image from cloudinary - completed
+    const user = await UserModel.findById(req.user?._id).select("-password");
+    const oldurl = user.avatar;
     const avatar = await uploadOnCloudinary(avatarlocalPath);
-    if (!avatar.url) {
-      throw new ApiError(400, "Not uploaded on cloudinary due to some issue");
+    if(oldurl){
+      await destroyfromCloudinary(oldurl)
     }
-    const user = await UserModel.findByIdAndUpdate(
-      req.user?._id,
-      { $set: { avatar: avatar.url } },
-      { returnDocument: "after" }
-    ).select("-password");
+    user.avatar = avatar?.url;
+    await user.save()
 
     return res.status(200).json(new ApiResponse(200, user, "Avatar  updated"));
   } catch (error) {
@@ -305,15 +304,15 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   if (!coverImagelocalPath) {
     throw new ApiError(400, "All fields are Required");
   }
+  const user = await UserModel.findById(req.user?.id);
+  const oldcoverImageUrl = user?.coverImage
   const coverImage = await uploadOnCloudinary(coverImagelocalPath);
-  if (!coverImage.url) {
-    throw new ApiError(400, "Not uploaded on cloudinary due to some issue");
+  if(oldcoverImageUrl){
+    await destroyfromCloudinary(oldcoverImageUrl)
   }
-  const user = await UserModel.findByIdAndUpdate(
-    req.user?._id,
-    { $set: { coverImage: coverImage.url } },
-    { new: true }
-  ).select("-password");
+  user.coverImage = coverImage?.url;
+  await user.save()
+
 
   return res
     .status(200)

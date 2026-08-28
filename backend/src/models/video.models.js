@@ -38,8 +38,6 @@ const VideoSchema = Schema({
         type : Boolean,
         default : true
     }
-
-
 },{
     timestamps : true
 })
